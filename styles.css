@@ -62,7 +62,7 @@ img {
 	display: inline-flex;
 	align-items: center;
 	gap: 0.6rem;
-	padding: 0.4rem 1rem 0.4rem 0.4rem;
+	padding: 0.4rem 0.6rem 0.4rem 0.6rem;
 	border: 2px solid transparent;
 	border-radius: 21px;
 	background-color: var(--background-light);
@@ -80,7 +80,7 @@ img {
 }
 
 .me-link__icon {
-	height: 2rem;
+	height: 1.8rem;
 }
 
 @media screen and (max-width: 1250px) {
