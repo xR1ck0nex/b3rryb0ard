@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<meta http-equiv="X-UA-Compatible" content="IE=edge" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>H0stB3rry Home</title>
+		<link rel="stylesheet" href="./styles.css" />
+		<script src="jquery-3.7.1.min.js"></script>
+	</head>
+	<body>
+		<header class="header">
+			<div>
+				<h1>Hello there, <span id="userName">R1ck</span>.</h1>
+				<p id="fullDate">
+					Today is <span id="currentDate">Monday 1, January 2000</span>
+				</p>
+				<a class="me-link" href="https://me.h0stb3rry.org">
+					<img class="me-link__icon" src="./icons/me.svg" alt="">
+					<span>Personal page</span>
+				</a>
+			</div>
+			<p id="currentTime">00:00 PM</p>
+		</header><br>
+
+		<form method="get" action="https://search.h0stb3rry.org/search" id="search_bar">
+			<input type="search" name="q" size="auto" placeholder="Search for..." id="search_bar_input">
+		</form>
+
+		<main id="cardContainer"></main>
+
+		<div id="card-container"></div> <!-- Card container will be populated dynamically -->
+
+		<script src="./app.js"></script>
+	</body>
+</html>
