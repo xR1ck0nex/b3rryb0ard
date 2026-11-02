@@ -11,6 +11,7 @@
 	--background-light: #26233a;  /* overlay */
 	--status-up: #9ccfd8;         /* foam */
 	--status-down: #eb6f92;       /* love */
+	--status-warn: #f6c177;       /* gold */
 }
 
 * {
@@ -61,7 +62,8 @@ img {
 	font-size: 4rem;
 }
 
-.me-link {
+.me-link,
+.pill-button {
 	display: inline-flex;
 	align-items: center;
 	gap: 0.6rem;
@@ -76,7 +78,9 @@ img {
 }
 
 .me-link:hover,
-.me-link:focus-visible {
+.me-link:focus-visible,
+.pill-button:hover,
+.pill-button:focus-visible {
 	border-color: var(--primary);
 	color: var(--primary);
 	outline: none;
@@ -85,6 +89,13 @@ img {
 .me-link__icon {
 	height: 1.8rem;
 }
+
+.pill-button {
+	font: inherit;
+	font-weight: 600;
+	cursor: pointer;
+}
+
 
 @media screen and (max-width: 1250px) {
 	.header > div {
@@ -169,6 +180,50 @@ img {
 	border-radius: 50%;
 }
 
+.card__plus {
+	width: 10vh;
+	height: 10vh;
+	fill: none;
+	stroke: var(--text-muted);
+	stroke-width: 2;
+	stroke-linecap: round;
+	transition: 0.2s;
+}
+
+.card:hover .card__plus,
+.card:focus .card__plus {
+	stroke: var(--primary);
+}
+
+.card__remove {
+	position: absolute;
+	top: 6px;
+	right: 12px;
+	font-size: 1.3rem;
+	line-height: 1;
+	color: var(--text-muted);
+	opacity: 0;
+	transition: 0.2s;
+}
+
+.card:hover .card__remove,
+.card:focus-within .card__remove {
+	opacity: 1;
+}
+
+.card__remove:hover,
+.card__remove:focus-visible {
+	color: var(--status-down);
+	outline: none;
+}
+
+/* No hover on touch screens, so keep the remove button visible there */
+@media (hover: none) {
+	.card__remove {
+		opacity: 1;
+	}
+}
+
 .card__notification--up {
 	background-color: var(--status-up);
 }
@@ -242,4 +297,230 @@ img {
 #search_bar_input:focus {
 	outline-color: var(--primary);
 	transition: 0.2s;
+}
+
+dialog {
+	color: var(--text-light);
+	font-family: "Open Sans", system-ui, sans-serif;
+	background-color: var(--background-medium);
+	border: 2px solid var(--primary);
+	border-radius: 21px;
+	padding: 1.5rem 2rem;
+	width: min(24rem, 90vw);
+}
+
+dialog::backdrop {
+	background-color: rgba(25, 23, 36, 0.8);
+}
+
+.bookmark-form {
+	display: flex;
+	flex-direction: column;
+	gap: 1rem;
+}
+
+.bookmark-form h2 {
+	margin: 0;
+	color: var(--primary);
+}
+
+.bookmark-form__header {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	min-height: 3rem;
+}
+
+.bookmark-form__preview {
+	width: 3rem;
+	height: 3rem;
+	object-fit: contain;
+}
+
+.bookmark-form label {
+	display: flex;
+	flex-direction: column;
+	gap: 0.4rem;
+	font-weight: 600;
+}
+
+.bookmark-form input[type="text"] {
+	color: var(--text-light);
+	font-family: inherit;
+	padding: 0.7rem 1rem;
+	border: 0px;
+	border-radius: 21px;
+	background-color: var(--background-light);
+	outline: 2px solid;
+	outline-color: transparent;
+	transition: 0.2s;
+}
+
+.bookmark-form input[type="text"]::placeholder {
+	color: var(--text-muted);
+}
+
+.bookmark-form input[type="text"]:hover,
+.bookmark-form input[type="text"]:focus {
+	outline-color: var(--primary);
+}
+
+.bookmark-form__message {
+	min-height: 1.2rem;
+	margin: 0;
+	color: var(--text-muted);
+}
+
+.bookmark-form__actions {
+	display: flex;
+	gap: 0.6rem;
+}
+
+/* Server widget */
+
+.monitor {
+	display: block;
+	padding: 0.6rem 1.5rem 1.5rem;
+}
+
+/* In the flow instead of absolute, so a wrapping status line pushes the tiles down */
+.monitor > .category__title {
+	position: static;
+	margin: 0 0 1rem -0.5rem;
+}
+
+.monitor[hidden],
+.monitor__services[hidden] {
+	display: none;
+}
+
+.monitor__status {
+	margin-left: 0.8rem;
+	font-size: 0.9rem;
+	font-weight: normal;
+	color: var(--status-warn);
+}
+
+.monitor__grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+	gap: 1rem;
+}
+
+.monitor__tile {
+	display: flex;
+	flex-direction: column;
+	gap: 0.3rem;
+	padding: 1rem 1.2rem;
+	background-color: var(--background-light);
+	border: 2px solid transparent;
+	border-radius: 21px;
+	transition: 0.2s;
+}
+
+.monitor__label {
+	color: var(--text-muted);
+	font-size: 0.9rem;
+	font-weight: 600;
+}
+
+.monitor__value {
+	font-size: 1.4rem;
+	font-weight: bold;
+}
+
+.monitor__detail {
+	min-height: 1em;
+	color: var(--text-muted);
+	font-size: 0.85rem;
+}
+
+.monitor__meter {
+	height: 6px;
+	margin-top: 0.3rem;
+	overflow: hidden;
+	border-radius: 3px;
+	background-color: var(--background-medium);
+}
+
+.monitor__meter-fill {
+	height: 100%;
+	background-color: var(--status-up);
+	transition: width 0.4s;
+}
+
+.monitor__tile--warn {
+	border-color: var(--status-warn);
+}
+
+.monitor__tile--bad {
+	border-color: var(--status-down);
+}
+
+.monitor__tile--warn .monitor__value {
+	color: var(--status-warn);
+}
+
+.monitor__tile--warn .monitor__meter-fill {
+	background-color: var(--status-warn);
+}
+
+.monitor__tile--bad .monitor__value {
+	color: var(--status-down);
+}
+
+.monitor__tile--bad .monitor__meter-fill {
+	background-color: var(--status-down);
+}
+
+.monitor__tile--unknown .monitor__value {
+	color: var(--text-muted);
+}
+
+.monitor__services {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.6rem;
+	margin: 1rem 0 0;
+	padding: 0;
+	list-style: none;
+}
+
+.monitor__service {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.5rem;
+	padding: 0.4rem 0.9rem;
+	border-radius: 21px;
+	background-color: var(--background-light);
+	font-weight: 600;
+}
+
+.monitor__service-value {
+	color: var(--text-muted);
+	font-weight: normal;
+}
+
+.monitor__dot {
+	width: 10px;
+	height: 10px;
+	border-radius: 50%;
+	background-color: var(--status-up);
+}
+
+.monitor__service--warn .monitor__dot {
+	background-color: var(--status-warn);
+}
+
+.monitor__service--bad .monitor__dot {
+	background-color: var(--status-down);
+}
+
+.monitor__service--bad .monitor__service-value {
+	color: var(--status-down);
+}
+
+.monitor--stale .monitor__grid,
+.monitor--stale .monitor__services {
+	opacity: 0.45;
 }

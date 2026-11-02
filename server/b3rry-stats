@@ -1,0 +1,298 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Copyright (C) 2026 Artem Barkov
+#
+# b3rry-stats: writes server health and service response times to a JSON
+# file every INTERVAL seconds, for the b3rryb0ard dashboard widget.
+#
+# Needs: bash, jq, curl, awk, df, findmnt (all in Debian 12).
+#
+# Environment (defaults in brackets):
+#   OUTPUT         file to write          [$RUNTIME_DIRECTORY/stats.json]
+#   INTERVAL       seconds between runs   [10]
+#   SERVICE_INTERVAL seconds between service checks [30]
+#   SERVICES_FILE  "name url" per line    [/etc/b3rry-stats/services]
+#   CHECK_TIMEOUT  seconds per check      [5]
+#   DISKS          mounts to report       [/ plus the mounts of md arrays]
+#   ONCE           1 = write once, exit   [0]
+#
+# Services file: one service per line, the URL last. Supported URLs are
+# http://, https:// and tcp://host:port. Lines starting with # are skipped.
+
+set -uo pipefail
+
+PROC_ROOT="${PROC_ROOT:-/proc}"
+SYS_ROOT="${SYS_ROOT:-/sys}"
+OUTPUT="${OUTPUT:-${RUNTIME_DIRECTORY:-/run/b3rry-stats}/stats.json}"
+INTERVAL="${INTERVAL:-10}"
+SERVICE_INTERVAL="${SERVICE_INTERVAL:-30}"
+SERVICES_FILE="${SERVICES_FILE:-/etc/b3rry-stats/services}"
+CHECK_TIMEOUT="${CHECK_TIMEOUT:-5}"
+CPU_SAMPLE_SECONDS="${CPU_SAMPLE_SECONDS:-1}"
+DISKS="${DISKS:-}"
+ONCE="${ONCE:-0}"
+
+log() {
+	printf 'b3rry-stats: %s\n' "$*" >&2
+}
+
+# Prints "total idle" jiffies from the first line of /proc/stat.
+# guest and guest_nice are already counted in user and nice, so they are left out.
+read_cpu_sample() {
+	local _ user nice system idle iowait irq softirq steal
+	read -r _ user nice system idle iowait irq softirq steal _ < "$PROC_ROOT/stat"
+	printf '%d %d\n' $((user + nice + system + idle + iowait + irq + softirq + steal)) $((idle + iowait))
+}
+
+# cpu_percent prev_total prev_idle total idle -> busy percent with one decimal, or null
+cpu_percent() {
+	local total=$(($3 - $1)) idle=$(($4 - $2))
+	if ((total <= 0)); then
+		printf 'null\n'
+		return
+	fi
+	local tenths=$(((1000 * (total - idle) + total / 2) / total))
+	printf '%d.%d\n' $((tenths / 10)) $((tenths % 10))
+}
+
+# Degrees Celsius with one decimal, or null when there is no thermal zone
+temperature() {
+	local millidegrees="" zone="$SYS_ROOT/class/thermal/thermal_zone0/temp"
+	[[ -r $zone ]] && read -r millidegrees < "$zone"
+	if [[ ! $millidegrees =~ ^-?[0-9]+$ ]]; then
+		printf 'null\n'
+		return
+	fi
+	local tenths=$(((millidegrees + 50) / 100))
+	printf '%d.%d\n' $((tenths / 10)) $((tenths % 10))
+}
+
+# One line per array: device, active (1/0), level, members, action, percent
+mdstat_lines() {
+	[[ -r $PROC_ROOT/mdstat ]] || return 0
+	awk '
+		function flush() {
+			if (dev != "") printf "%s\t%d\t%s\t%s\t%s\t%s\n", dev, active, level, members, action, percent
+			dev = ""
+		}
+		/^md[0-9]+ :/ {
+			flush()
+			dev = $1; active = ($3 == "active"); level = ""; members = ""; action = ""; percent = ""
+			for (i = 3; i <= NF; i++) if ($i ~ /^(raid[0-9]+|linear|multipath)$/) { level = $i; break }
+			next
+		}
+		dev != "" && /\[[0-9]+\/[0-9]+\] \[[U_]+\]/ {
+			match($0, /\[[U_]+\]/)
+			members = substr($0, RSTART + 1, RLENGTH - 2)
+		}
+		dev != "" && /(recovery|resync|check|repair|reshape) *= *[0-9.]+%/ {
+			match($0, /(recovery|resync|check|repair|reshape) *= *[0-9.]+%/)
+			split(substr($0, RSTART, RLENGTH), part, /[ =%]+/)
+			action = part[1]; percent = part[2]
+		}
+		/^[ \t]*$/ { flush() }
+		END { flush() }
+	' "$PROC_ROOT/mdstat"
+}
+
+raid_json() {
+	mdstat_lines | jq -R -s -c '
+		split("\n") | map(select(length > 0) | split("\t") | {
+			device: .[0],
+			level: .[2],
+			active: (.[1] == "1"),
+			members: .[3],
+			healthy: (.[1] == "1" and (.[3] | test("_") | not)),
+			sync: (if .[4] == "" then null else { action: .[4], percent: (.[5] | tonumber) } end)
+		})'
+}
+
+# Mounts to report: DISKS if set, otherwise / and wherever md arrays are mounted
+disk_mounts() {
+	if [[ -n $DISKS ]]; then
+		local -a listed
+		read -r -a listed <<< "$DISKS" # split on spaces, no globbing
+		printf '%s\n' "${listed[@]}"
+		return
+	fi
+	printf '/\n'
+	local device
+	while IFS=$'\t' read -r device _; do
+		findmnt -rn -o TARGET -S "/dev/$device" 2>/dev/null
+	done < <(mdstat_lines)
+}
+
+disks_json() {
+	local -a mounts=()
+	mapfile -t mounts < <(disk_mounts | awk '!seen[$0]++')
+	((${#mounts[@]})) || { printf '[]\n'; return; }
+
+	# Each mount separately, so one broken mount does not hide the others
+	local mount
+	for mount in "${mounts[@]}"; do
+		df -B1 --output=size,used "$mount" 2>/dev/null | awk -v mount="$mount" 'NR == 2 { printf "%s\t%s\t%s\n", mount, $1, $2 }'
+	done | jq -R -s -c '
+		split("\n") | map(select(length > 0) | split("\t") | { mount: .[0], size: (.[1] | tonumber), used: (.[2] | tonumber) })'
+}
+
+# check_service name url -> one TSV line: name, url, up, code, ms
+check_service() {
+	local name=$1 url=$2 code ms up
+	case $url in
+		http://* | https://*)
+			local result seconds
+			result=$(curl -o /dev/null -s -L --max-redirs 5 --max-time "$CHECK_TIMEOUT" \
+				-w '%{http_code} %{time_total}' "$url" 2>/dev/null) || true
+			read -r code seconds <<< "${result:-000 0}"
+			code=$((10#${code:-0}))
+			if ((code >= 200 && code < 400)); then
+				up=true
+				ms=$(awk -v s="$seconds" 'BEGIN { printf "%d", s * 1000 + 0.5 }')
+			else
+				up=false
+				ms=null
+			fi
+			;;
+		tcp://*)
+			local address=${url#tcp://} host port start
+			host=${address%:*}
+			port=${address##*:}
+			code=null
+			start=$(date +%s%N)
+			# shellcheck disable=SC2016 # $1 and $2 belong to the inner bash: host and port stay out of the code
+			if timeout "$CHECK_TIMEOUT" bash -c 'exec 3<>"/dev/tcp/$1/$2"' _ "$host" "$port" 2>/dev/null; then
+				up=true
+				ms=$((($(date +%s%N) - start + 500000) / 1000000))
+			else
+				up=false
+				ms=null
+			fi
+			;;
+	esac
+	printf '%s\t%s\t%s\t%s\t%s\n' "$name" "$url" "$up" "$code" "$ms"
+}
+
+# Reads the services file; prints "name<TAB>url" for every valid line
+read_services() {
+	[[ -r $SERVICES_FILE ]] || return 0
+	local line url name host
+	while IFS= read -r line || [[ -n $line ]]; do
+		line=${line%%$'\r'}
+		[[ $line =~ ^[[:space:]]*(#|$) ]] && continue
+		read -r -a words <<< "$line"
+		url=${words[-1]}
+		name=${words[*]:0:${#words[@]}-1}
+
+		if [[ $url =~ ^https?://([A-Za-z0-9.-]+|\[[0-9A-Fa-f:]+\])(:[0-9]+)?(/[^[:space:]]*)?$ ]]; then
+			host=${BASH_REMATCH[1]}
+		elif [[ $url =~ ^tcp://([A-Za-z0-9.-]+):([0-9]{1,5})$ ]] && ((BASH_REMATCH[2] >= 1 && BASH_REMATCH[2] <= 65535)); then
+			host=${BASH_REMATCH[1]}
+		else
+			log "skipping unsupported service line: $line"
+			continue
+		fi
+		printf '%s\t%s\n' "${name:-$host}" "$url"
+	done < "$SERVICES_FILE"
+}
+
+# All checks run in parallel; results keep the order of the services file
+services_json() {
+	local dir index=0 name url
+	dir=$(mktemp -d) || { printf '[]\n'; return; }
+	while IFS=$'\t' read -r name url; do
+		check_service "$name" "$url" > "$dir/$(printf '%04d' "$index")" &
+		index=$((index + 1))
+	done < <(read_services)
+	wait
+
+	if ((index == 0)); then
+		printf '[]\n'
+	else
+		cat "$dir"/* | jq -R -s -c '
+			split("\n") | map(select(length > 0) | split("\t") | {
+				name: .[0], url: .[1], up: (.[2] == "true"),
+				code: (.[3] | fromjson), ms: (.[4] | fromjson)
+			})'
+	fi
+	rm -rf "$dir"
+}
+
+# is_due last now every -> success when never run, when `every` seconds have
+# passed, or when the clock went backwards
+is_due() {
+	[[ -z $1 ]] || (($2 - $1 >= $3 || $2 < $1))
+}
+
+# collect cpu services -> full JSON document
+collect() {
+	local load1 load5 load15 mem_total mem_available uptime
+	read -r load1 load5 load15 _ < "$PROC_ROOT/loadavg"
+	mem_total=$(awk '$1 == "MemTotal:" { print $2 * 1024 }' "$PROC_ROOT/meminfo")
+	mem_available=$(awk '$1 == "MemAvailable:" { print $2 * 1024 }' "$PROC_ROOT/meminfo")
+	read -r uptime _ < "$PROC_ROOT/uptime"
+
+	jq -n -c \
+		--argjson time "$(date +%s)" \
+		--argjson interval "$INTERVAL" \
+		--argjson uptime "${uptime%%.*}" \
+		--argjson cpu "$1" \
+		--argjson load "[$load1, $load5, $load15]" \
+		--argjson total "${mem_total:-0}" \
+		--argjson available "${mem_available:-0}" \
+		--argjson temperature "$(temperature)" \
+		--argjson disks "$(disks_json)" \
+		--argjson raid "$(raid_json)" \
+		--argjson services "$2" \
+		'{
+			version: 1, time: $time, interval: $interval, uptime: $uptime,
+			cpu: $cpu, load: $load,
+			memory: { total: $total, available: $available },
+			temperature: $temperature,
+			disks: $disks, raid: $raid, services: $services
+		}'
+}
+
+# Writes next to OUTPUT and renames, so readers never see half a file
+write_output() {
+	local tmp
+	tmp=$(mktemp "${OUTPUT}.XXXXXX") || return 1
+	if printf '%s\n' "$1" > "$tmp"; then
+		chmod 0644 "$tmp"
+		mv -f "$tmp" "$OUTPUT"
+	else
+		rm -f "$tmp"
+		return 1
+	fi
+}
+
+main() {
+	local prev cur document now services="[]" checked=""
+	prev=$(read_cpu_sample)
+	sleep "$CPU_SAMPLE_SECONDS"
+
+	while :; do
+		# Service checks cost most of a run, so they have their own, slower pace
+		now=$(date +%s)
+		if is_due "$checked" "$now" "$SERVICE_INTERVAL"; then
+			services=$(services_json)
+			checked=$now
+		fi
+
+		cur=$(read_cpu_sample)
+		# shellcheck disable=SC2086 # two numbers each, split on purpose
+		if document=$(collect "$(cpu_percent $prev $cur)" "$services"); then
+			write_output "$document" || log "could not write $OUTPUT"
+		else
+			log "collecting failed, keeping the previous file"
+		fi
+		prev=$cur
+
+		[[ $ONCE == 1 ]] && break
+		sleep "$INTERVAL"
+	done
+}
+
+# Only run when executed, so the tests can source the functions
+if [[ ${BASH_SOURCE[0]} == "$0" ]]; then
+	main
+fi

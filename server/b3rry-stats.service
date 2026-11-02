@@ -1,0 +1,48 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Copyright (C) 2026 Artem Barkov
+#
+# Install: /etc/systemd/system/b3rry-stats.service
+
+[Unit]
+Description=b3rry-stats: server stats for the b3rryb0ard dashboard
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/b3rry-stats
+Environment=SERVICES_FILE=/etc/b3rry-stats/services
+# Environment=INTERVAL=10
+# Environment=SERVICE_INTERVAL=30
+# Environment="DISKS=/ /srv/raid"
+
+User=b3rry-stats
+Group=b3rry-stats
+Nice=10
+Restart=always
+RestartSec=5
+
+# /run is tmpfs, so writing every 10 seconds costs no disk writes.
+# The file is kept when the service stops, so the page can show it as stale.
+RuntimeDirectory=b3rry-stats
+RuntimeDirectoryMode=0755
+RuntimeDirectoryPreserve=yes
+
+# Hardening: reads /proc and /sys, makes HTTP/TCP connections, nothing else
+NoNewPrivileges=yes
+CapabilityBoundingSet=
+ProtectSystem=strict
+ProtectHome=read-only
+PrivateTmp=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+RestrictNamespaces=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+MemoryDenyWriteExecute=yes
+SystemCallArchitectures=native
+
+[Install]
+WantedBy=multi-user.target

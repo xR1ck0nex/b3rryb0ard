@@ -1,0 +1,15 @@
+# b3rry-stats services - install as /etc/b3rry-stats/services
+#
+# One service per line, the URL last; everything before it is the name.
+#   http:// and https://  up when it answers 2xx or 3xx (redirects followed)
+#   tcp://host:port       up when the port accepts a connection
+# Lines starting with # are skipped.
+
+NextCloud    https://cloud.<DOMAIN>
+Invidious    https://iv.<DOMAIN>
+RedLib       https://redlib.<DOMAIN>
+Vaultwarden  https://vault.<DOMAIN>
+Forgejo      https://git.<DOMAIN>
+SearXNG      https://search.<DOMAIN>
+Syncthing    https://sync.<DOMAIN>
+Minecraft    tcp://127.0.0.1:25565
