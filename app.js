@@ -29,78 +29,33 @@ const CARDS = [
 	{
 		name: "Invidious",
 		link: "https://iv.h0stb3rry.org",
-		img: "./icons/invidious.svg"
+		img: "invidious"
 	},
 	{
 		name: "RedLib",
 		link: "https://redlib.h0stb3rry.org",
-		img: "./icons/redlib.svg"
+		img: "redlib"
 	},
 	{
 		name: "Vaultwarden",
 		link: "https://vault.h0stb3rry.org",
-		img: "./icons/bitwarden.png"
+		img: "vaultwarden"
 	},
 	{
 		name: "Forgejo",
 		link: "https://git.h0stb3rry.org",
-		img: "./icons/forgejo.svg"
+		img: "forgejo"
 	},
 	{
 		name: "SearXNG",
 		link: "https://search.h0stb3rry.org",
-		img: "./icons/searxng.svg"
+		img: "searxng"
 	},
 	{
 		name: "Syncthing",
 		link: "https://sync.h0stb3rry.org",
-		img: "./icons/syncthing.png"
+		img: "syncthing"
 	},
-	{
-		name: "ArchWiki",
-		link: "https://wiki.archlinux.org",
-		img: "./icons/archlinux.svg"
-	},
-	{
-		name: "HyprWiki",
-		link: "https://wiki.hypr.land",
-		img: "./icons/hyprland.svg"
-	},
-	{
-		name: "Deezer",
-		link: "https://deezer.com",
-		img: "./icons/deezer.svg"
-	},
-	{
-		name: "TutaMail",
-		link: "https://app.tuta.com",
-		img: "./icons/tuta.svg"
-	},
-	{
-		name: "Z-Library",
-		link: "https://z-library.ec",
-		img: "./icons/z-library.svg"
-	},
-	{
-		name: "Telegram",
-		link: "https://web.telegram.org",
-		img: "./icons/telegram.png"
-	},
-	{
-		name: "Claude",
-		link: "https://claude.ai",
-		img: "./icons/claude.png"
-	},
-	{
-		name: "1337x",
-		link: "https://x1337x.eu",
-		img: "./icons/1337x.svg"
-	},
-	{
-		name: "Njalla",
-		link: "https://njal.la",
-		img: "./icons/njalla.svg"
-	}
 ];
 
 /* -------------------------------------------------------- */
