@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+	<!-- b3rryb0ard: a berry on a dashboard card, Rosé Pine (main) -->
+	<!-- SPDX-License-Identifier: GPL-3.0-or-later | Copyright (C) 2026 Artem Barkov -->
+	<defs>
+		<radialGradient id="drupelet" cx="0.36" cy="0.32" r="0.75">
+			<stop offset="0" stop-color="#e3d6f5"/>
+			<stop offset="0.45" stop-color="#c4a7e7"/>
+			<stop offset="1" stop-color="#9a80c0"/>
+		</radialGradient>
+	</defs>
+
+	<!-- the card: overlay colour, same rounding as the dashboard cards -->
+	<rect x="2" y="2" width="60" height="60" rx="14" fill="#26233a"/>
+
+	<!-- calyx: a crown of sepals and a short stem, like on a raspberry -->
+	<path d="M32 15 L32 8" stroke="#31748f" stroke-width="2.6" stroke-linecap="round"/>
+	<g fill="#9ccfd8" transform="translate(32 18.5)">
+		<path d="M0 0 C-3 -3.5 -2.6 -8.5 0 -11.5 C2.6 -8.5 3 -3.5 0 0 Z" transform="rotate(-62)"/>
+		<path d="M0 0 C-3 -3.5 -2.6 -8.5 0 -11.5 C2.6 -8.5 3 -3.5 0 0 Z" transform="rotate(-24)"/>
+		<path d="M0 0 C-3 -3.5 -2.6 -8.5 0 -11.5 C2.6 -8.5 3 -3.5 0 0 Z" transform="rotate(24)"/>
+		<path d="M0 0 C-3 -3.5 -2.6 -8.5 0 -11.5 C2.6 -8.5 3 -3.5 0 0 Z" transform="rotate(62)"/>
+	</g>
+
+	<!-- the berry: drupelets in a cone, card-coloured gaps between them -->
+	<g fill="url(#drupelet)" stroke="#26233a" stroke-width="1.1">
+		<circle cx="19.1" cy="23.5" r="4.6"/>
+		<circle cx="27.7" cy="23.5" r="4.6"/>
+		<circle cx="36.3" cy="23.5" r="4.6"/>
+		<circle cx="44.9" cy="23.5" r="4.6"/>
+		<circle cx="14.8" cy="31.0" r="4.6"/>
+		<circle cx="23.4" cy="31.0" r="4.6"/>
+		<circle cx="32.0" cy="31.0" r="4.6"/>
+		<circle cx="40.6" cy="31.0" r="4.6"/>
+		<circle cx="49.2" cy="31.0" r="4.6"/>
+		<circle cx="19.1" cy="38.5" r="4.6"/>
+		<circle cx="27.7" cy="38.5" r="4.6"/>
+		<circle cx="36.3" cy="38.5" r="4.6"/>
+		<circle cx="44.9" cy="38.5" r="4.6"/>
+		<circle cx="23.4" cy="46.0" r="4.6"/>
+		<circle cx="32.0" cy="46.0" r="4.6"/>
+		<circle cx="40.6" cy="46.0" r="4.6"/>
+		<circle cx="27.7" cy="53.5" r="4.6"/>
+		<circle cx="36.3" cy="53.5" r="4.6"/>
+	</g>
+</svg>
